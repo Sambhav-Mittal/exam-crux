@@ -9,8 +9,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
 @SpringBootApplication
 public class LoginApplication {
 	static UserRepository userRepository;
@@ -23,8 +21,7 @@ public class LoginApplication {
 
 	@Bean
 	CommandLineRunner init(RoleRepository roleRepository,
-						   UserRepository userRepository,
-						   BCryptPasswordEncoder passwordEncoder) {
+						   UserRepository userRepository) {
 		return args -> {
 			// Initialize roles if not present
 			if (roleRepository.count() == 0) {
