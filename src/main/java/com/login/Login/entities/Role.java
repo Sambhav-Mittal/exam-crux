@@ -16,7 +16,7 @@ public class Role {
     private Long id;
 
     @Column(unique = true, nullable = false)
-    private RoleType roleName;
+    private String roleName;
 
     @Column(nullable = false)
     @Builder.Default

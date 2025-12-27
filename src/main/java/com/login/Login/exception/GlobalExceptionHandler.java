@@ -8,8 +8,19 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(InactiveUserException.class)
+    public ResponseEntity<Object> handleInactiveUserException(InactiveUserException ex) {
+        // Return custom response with error message and status code
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", ex.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Response<Object>> handleRuntimeException(RuntimeException ex) {

@@ -30,26 +30,27 @@ public class LoginApplication {
 			if (roleRepository.count() == 0) {
 				// Admin role
 				Role adminRole = Role.builder()
-						.roleName(RoleType.ADMIN)
+						.roleName(RoleType.ADMIN.name())
 						.build();
 				roleRepository.save(adminRole);
 
 				// User role
 				Role userRole = Role.builder()
-						.roleName(RoleType.USER)
+						.roleName(RoleType.USER.name())
 						.build();
 				roleRepository.save(userRole);
 			}
 
 			// Initialize admin user if not present
 			if (userRepository.count() == 0) {
-				Role adminRole = roleRepository.findByNameIgnoreCase("admin")
+				Role adminRole = roleRepository.findByRoleNameIgnoreCase("admin")
 						.orElseThrow(() -> new RuntimeException("Admin role not found"));
 
 				User adminUser = User.builder()
-						.username("admin@examcrux.in")
-						.password(passwordEncoder.encode("examcrux@123"))
+						.username("sam.17mittal@gmail.com")
 						.role(adminRole)
+						.profileImage(null)
+						.active(true)
 						.build();
 
 				userRepository.save(adminUser);

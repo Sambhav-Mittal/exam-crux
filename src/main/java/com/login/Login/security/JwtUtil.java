@@ -1,18 +1,26 @@
 package com.login.Login.security;
 
+import com.login.Login.entities.Role;
 import com.login.Login.entities.User;
+import com.login.Login.exception.InactiveUserException;
 import com.login.Login.exception.TokenBlacklistedException;
 import com.login.Login.exception.UserNotFoundException;
+import com.login.Login.repository.RoleRepository;
 import com.login.Login.repository.UserRepository;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 @Component
@@ -22,7 +30,10 @@ public class JwtUtil {
     private final String SECRET = "mysecretkeymysecretkeymysecretkeymysecretkey"; // 32+ chars
     private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+
     private final JwtBlacklistService jwtBlacklistService;
+    private final long JwtExpirationInMs = (1000 * 60 * 60) ;
 
     // ------------------ GENERATE TOKEN ------------------
     public String generateToken(String email) {
@@ -31,7 +42,34 @@ public class JwtUtil {
                 .setSubject(email)
                 .setId(jti) // JTI claim
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)) // 1 hour
+                .setExpiration(new Date(System.currentTimeMillis() + JwtExpirationInMs)) // 1 hour
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String generateJwtToken(OAuth2User oauth2User) {
+        Map<String, Object> userAttributes = oauth2User.getAttributes();
+        String jti = UUID.randomUUID().toString(); // unique token ID for session mapping
+        User user = userRepository.findByUsername((String) userAttributes.get("email")).orElse(null);
+        if(user==null){
+            User registerUser = User.builder()
+                    .username((String) userAttributes.get("email"))
+                    .profileImage((String) userAttributes.get("picture"))
+                    .active(true)
+                    .role(roleRepository.findByRoleNameIgnoreCase("USER").orElseThrow(()->new RuntimeException("Role Not Found"))).build();
+            userRepository.save(registerUser);
+            user = registerUser;
+        }else {
+            user.setProfileImage((String) userAttributes.get("picture"));
+            userRepository.save(user);
+        }
+        // Create the JWT token
+        return Jwts.builder()
+                .setSubject(user.getUsername()) // Use the username as the subject
+                .setId(jti)
+                .claim("role", user.getRole().getRoleName())   // Optionally include user attributes in the JWT
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + JwtExpirationInMs))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -102,14 +140,14 @@ public class JwtUtil {
 
     public void ensureAdminFromToken(String token) throws UserNotFoundException {
         User user = getUserFromToken(token);
-        if (user.getRole() == null || !"ADMIN".equalsIgnoreCase(user.getRole().getName())) {
+        if (user.getRole() == null || !"ADMIN".equalsIgnoreCase(user.getRole().getRoleName())) {
             throw new RuntimeException("Access denied: Admin privileges required");
         }
     }
 
     public void ensureAdmin() {
         User user = getAuthenticatedUserFromContext();
-        if (user.getRole() == null || !"ADMIN".equalsIgnoreCase(user.getRole().getName())) {
+        if (user.getRole() == null || !"ADMIN".equalsIgnoreCase(user.getRole().getRoleName())) {
             throw new RuntimeException("Access denied: Admin privileges required");
         }
     }
